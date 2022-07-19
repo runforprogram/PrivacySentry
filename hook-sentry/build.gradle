@@ -1,5 +1,6 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+apply plugin: 'maven-publish'
 
 android {
     compileSdkVersion 30
@@ -44,5 +45,16 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 }
+afterEvaluate {
+    publishing {
+        publications {
+            debug(MavenPublication) {
+                groupId = 'com.yl.lib.plugin'
+                artifactId = 'hook-sentry'
+                version = '0.0.1.70-SNAPSHOT'
+                from components.debug
+            }
+        }
+    }
+}
 
-apply plugin: 'com.github.dcendents.android-maven'

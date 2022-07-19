@@ -2,9 +2,11 @@ package com.yl.lib.plugin.sentry.transform
 
 import com.android.build.api.transform.*
 import com.android.build.gradle.internal.pipeline.TransformManager
-import com.android.utils.FileUtils
 import com.yl.lib.plugin.sentry.extension.PrivacyExtension
+import com.yl.lib.plugin.sentry.runCommand
+import org.apache.commons.io.FileUtils
 import org.gradle.api.Project
+import org.gradle.internal.impldep.software.amazon.ion.impl.PrivateIonConstants.True
 import org.gradle.util.GFileUtils
 import java.io.File
 
@@ -70,44 +72,81 @@ class PrivacyCollectTransform : Transform {
         extension: PrivacyExtension
     ) {
         transformInput.jarInputs.forEach {
+            println("outputreal it name ="+it.name)
             var output =
-                outputProvider.getContentLocation(it.name, it.contentTypes, it.scopes, Format.JAR)
-            if (incremental) {
-                when (it.status) {
-                    Status.ADDED, Status.CHANGED -> {
-                        project.logger.info("directory status is ${it.status}  file is:" + it.file.absolutePath)
-                        PrivacyClassProcessor.processJar(
-                            project,
-                            it.file,
-                            extension,
-                            runAsm = { input, project ->
-                                PrivacyClassProcessor.runCollect(
-                                    input,
-                                    project
-                                )
-                            })
-                        GFileUtils.deleteQuietly(output)
-                        GFileUtils.copyFile(it.file, output)
-                    }
-                    Status.REMOVED -> {
-                        project.logger.info("jar REMOVED file is:" + it.file.absolutePath)
-                        GFileUtils.deleteQuietly(output)
-                    }
+                if (it.name.endsWith("jar")) {
+                    outputProvider.getContentLocation(
+                        "pc-"+it.name,
+                        it.contentTypes,
+                        it.scopes,
+                        Format.JAR
+                    )
+                } else {
+                    outputProvider.getContentLocation(
+                        it.file.name,
+                        it.contentTypes,
+                        it.scopes,
+                        Format.JAR
+                    )
                 }
-            } else {
-                project.logger.info("jar incremental false file is:" + it.file.absolutePath)
-                PrivacyClassProcessor.processJar(
-                    project,
-                    it.file,
-                    extension,
-                    runAsm = { input, project ->
-                        PrivacyClassProcessor.runCollect(
-                            input,
-                            project
-                        )
-                    })
-                GFileUtils.deleteQuietly(output)
+            println("outputreal ="+output.absolutePath)
+            var destFile=File(output.parent,it.file.name)
+            destFile=output
+            println("output ="+destFile.absolutePath)
+            val command= ("jarsigner -verify " +it.file.absolutePath)
+            println("command=$command")
+            val signCheck=command.runCommand(it.file)
+            if (signCheck == null) {
+                println("$command run error******************")
+                return
+            }
+            println("sign check =  $signCheck")
+            val signed=signCheck.contains("已验证")
+            val nameSkip=it.name.contains("mqttv3")
+            if (signed) {
                 GFileUtils.copyFile(it.file, output)
+            }else{
+                if (incremental) {
+                    when (it.status) {
+                        Status.ADDED, Status.CHANGED -> {
+                            project.logger.info("directory status is ${it.status}  file is:" + it.file.absolutePath)
+                            PrivacyClassProcessor.processJar(
+                                project,
+                                it.file,
+                                extension,
+                                runAsm = { input, project ->
+                                    PrivacyClassProcessor.runCollect(
+                                        input,
+                                        project
+                                    )
+                                })
+                            GFileUtils.deleteQuietly(destFile)
+                            GFileUtils.copyFile(it.file, destFile)
+                        }
+                        Status.REMOVED -> {
+                            project.logger.info("jar REMOVED file is:" + it.file.absolutePath)
+                            GFileUtils.deleteQuietly(destFile)
+                        }
+                    }
+                } else {
+                    project.logger.info("jar incremental false file is:" + it.file.absolutePath)
+                    if (it.file.absolutePath.contains("mqttv3")) {
+
+                    }
+                    PrivacyClassProcessor.processJar(
+                        project,
+                        it.file,
+                        extension,
+                        runAsm = { input, project ->
+                            PrivacyClassProcessor.runCollect(
+                                input,
+                                project
+                            )
+                        })
+                    println("destfiel="+destFile.absolutePath)
+                    GFileUtils.deleteQuietly(destFile)
+                    GFileUtils.copyFile(it.file, destFile)
+                }
             }
         }
     }
@@ -129,11 +168,8 @@ class PrivacyCollectTransform : Transform {
             )
             if (incremental) {
                 for ((inputFile, status) in it.changedFiles) {
-                    var outputFile = File(
-                        outputDir,
-                        FileUtils.relativePossiblyNonExistingPath(inputFile, inputDir)
-                    )
-
+                    val destFileChild= inputFile.toRelativeString(it.file)
+                    val destFile=File(outputDir,destFileChild)
                     when (status) {
                         Status.REMOVED -> {
                             project.logger.info("directory REMOVED file is:" + inputFile.absolutePath)
@@ -154,8 +190,8 @@ class PrivacyCollectTransform : Transform {
                                 }
                             )
                             if (inputFile.exists()) {
-                                GFileUtils.deleteQuietly(outputFile)
-                                FileUtils.copyFile(inputFile, outputFile)
+                                GFileUtils.deleteQuietly(destFile)
+                                FileUtils.copyFile(inputFile,destFile)
                             }
                         }
                     }

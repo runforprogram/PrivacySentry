@@ -42,7 +42,7 @@ class APP : Application() {
             // 打开写入文件开关
             .enableFileResult(true)
             // 打开游客模式
-            .configVisitorModel(true)
+            .configVisitorModel(false)
             // 文件输出后的回调
             .configResultCallBack(object : PrivacyResultCallBack {
                 override fun onResultCallBack(filePath: String) {

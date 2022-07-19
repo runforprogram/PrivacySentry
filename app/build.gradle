@@ -56,16 +56,26 @@ dependencies {
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.1'
     implementation "androidx.multidex:multidex:2.0.1"
-    if (rootProject.ext.plugin_local_debug) {
-        implementation project(":hook-sentry")
-        implementation project(":privacy-proxy")
-        implementation project(path: ':privacy-annotation')
-    } else {
-        def privacyVersion = "1.0.7"
-        implementation "com.github.allenymt.PrivacySentry:hook-sentry:$privacyVersion"
-        implementation "com.github.allenymt.PrivacySentry:privacy-annotation:$privacyVersion"
-        implementation "com.github.allenymt.PrivacySentry:privacy-proxy:$privacyVersion"
-    }
+    // aar依赖
+    def privacyVersion = "0.0.1.70-SNAPSHOT"
+    implementation "com.yl.lib.plugin:hook-sentry:$privacyVersion"
+    implementation "com.yl.lib.plugin:privacy-annotation:$privacyVersion"
+    //如果不想使用库中本身的代理方法，可以不引入这个aar，自己实现
+    implementation "com.yl.lib.plugin:privacy-proxy:$privacyVersion"
+
+//    implementation project(":hook-sentry")
+//    implementation project(":privacy-proxy")
+//    implementation project(path: ':privacy-annotation')
+//        def privacyVersion = "1.0.7"
+//        implementation "com.github.allenymt.PrivacySentry:hook-sentry:$privacyVersion"
+//        implementation "com.github.allenymt.PrivacySentry:privacy-annotation:$privacyVersion"
+//        implementation "com.github.allenymt.PrivacySentry:privacy-proxy:$privacyVersion"
+
+//
+//    def privacyVersion = "1.0.7"
+//    implementation "com.github.allenymt.PrivacySentry:hook-sentry:$privacyVersion"
+//    implementation "com.github.allenymt.PrivacySentry:privacy-annotation:$privacyVersion"
+//    implementation "com.github.allenymt.PrivacySentry:privacy-proxy:$privacyVersion"
 
     implementation(project(path: ':privacy-test')) {
         exclude module: 'privacy-annotation'
@@ -76,8 +86,8 @@ dependencies {
 }
 
 
-privacy {
-    // 设置免hook的名单
-    blackList = []
-    replaceFileName = "replace.json"
-}
+//privacy {
+//    // 设置免hook的名单
+//    blackList = []
+//    replaceFileName = "replace.json"
+//}

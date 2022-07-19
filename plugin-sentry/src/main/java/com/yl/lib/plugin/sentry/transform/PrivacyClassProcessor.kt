@@ -78,6 +78,10 @@ class PrivacyClassProcessor {
             if (file == null || !file.exists() || !file.name.endsWith(".jar")) {
                 return
             }
+            println("rrrrrrrrrrrrrrr"+file.name)
+            if (file.name.contains("mqttv3")) {
+                return
+            }
             var tmpFile = File(file.parent + File.separator + "${file.name}_classes_temp.jar")
             // 避免上次的缓存被重复插入
             if (tmpFile.exists()) {

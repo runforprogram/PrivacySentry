@@ -2,8 +2,8 @@ package com.yl.lib.plugin.sentry.transform
 
 import com.android.build.api.transform.*
 import com.android.build.gradle.internal.pipeline.TransformManager
-import com.android.utils.FileUtils
 import com.yl.lib.plugin.sentry.extension.PrivacyExtension
+import org.apache.commons.io.FileUtils
 import org.gradle.api.Project
 import org.gradle.util.GFileUtils
 import java.io.File
@@ -39,7 +39,7 @@ class PrivacySentryTransform : Transform {
 
     override fun transform(transformInvocation: TransformInvocation?) {
         super.transform(transformInvocation)
-
+        println("8888888888888888888888888")
         // 非增量，删掉所有
         if (transformInvocation?.isIncremental == false) {
             transformInvocation.outputProvider.deleteAll()
@@ -74,45 +74,54 @@ class PrivacySentryTransform : Transform {
         incremental: Boolean,
         extension: PrivacyExtension
     ) {
+        println("hook handleJar=")
         transformInput.jarInputs.forEach {
             var output =
                 outputProvider.getContentLocation(it.name, it.contentTypes, it.scopes, Format.JAR)
-            if (incremental) {
-                when (it.status) {
-                    Status.ADDED, Status.CHANGED -> {
-                        project.logger.info("directory status is ${it.status}  file is:" + it.file.absolutePath)
-                        PrivacyClassProcessor.processJar(
-                            project,
-                            it.file,
-                            extension,
-                            runAsm = { input, project ->
-                                PrivacyClassProcessor.runHook(
-                                    input,
-                                    project
-                                )
-                            })
-                        GFileUtils.deleteQuietly(output)
-                        GFileUtils.copyFile(it.file, output)
-                    }
-                    Status.REMOVED -> {
-                        project.logger.info("jar REMOVED file is:" + it.file.absolutePath)
-                        GFileUtils.deleteQuietly(output)
-                    }
-                }
-            } else {
-                project.logger.info("jar incremental false file is:" + it.file.absolutePath)
-                PrivacyClassProcessor.processJar(
-                    project,
-                    it.file,
-                    extension,
-                    runAsm = { input, project ->
-                        PrivacyClassProcessor.runHook(
-                            input,
-                            project
-                        )
-                    })
-                GFileUtils.deleteQuietly(output)
+            println("hook output it name="+it.name)
+            println("hook output="+output.absolutePath)
+            println("hook input="+it.file.absolutePath)
+            if (it.name.contains("mqttv3")) {
                 GFileUtils.copyFile(it.file, output)
+            }else{
+                if (incremental) {
+                    when (it.status) {
+                        Status.ADDED, Status.CHANGED -> {
+                            project.logger.info("directory status is ${it.status}  file is:" + it.file.absolutePath)
+                            PrivacyClassProcessor.processJar(
+                                project,
+                                it.file,
+                                extension,
+                                runAsm = { input, project ->
+                                    PrivacyClassProcessor.runHook(
+                                        input,
+                                        project
+                                    )
+                                })
+                            GFileUtils.deleteQuietly(output)
+                            GFileUtils.copyFile(it.file, output)
+                        }
+                        Status.REMOVED -> {
+                            project.logger.info("jar REMOVED file is:" + it.file.absolutePath)
+                            GFileUtils.deleteQuietly(output)
+                        }
+                    }
+                } else {
+                    project.logger.info("jar incremental false file is:" + it.file.absolutePath)
+                    println("jar incremental false file is:" + it.file.absolutePath)
+                    PrivacyClassProcessor.processJar(
+                        project,
+                        it.file,
+                        extension,
+                        runAsm = { input, project ->
+                            PrivacyClassProcessor.runHook(
+                                input,
+                                project
+                            )
+                        })
+                    GFileUtils.deleteQuietly(output)
+                    GFileUtils.copyFile(it.file, output)
+                }
             }
         }
     }
@@ -134,10 +143,8 @@ class PrivacySentryTransform : Transform {
             )
             if (incremental) {
                 for ((inputFile, status) in it.changedFiles) {
-                    var outputFile = File(
-                        outputDir,
-                        FileUtils.relativePossiblyNonExistingPath(inputFile, inputDir)
-                    )
+                    val destFileChild= inputFile.toRelativeString(it.file)
+                    val destFile=File(outputDir,destFileChild)
 
                     when (status) {
                         Status.REMOVED -> {
@@ -159,8 +166,8 @@ class PrivacySentryTransform : Transform {
                                 }
                             )
                             if (inputFile.exists()) {
-                                GFileUtils.deleteQuietly(outputFile)
-                                FileUtils.copyFile(inputFile, outputFile)
+                                GFileUtils.deleteQuietly(destFile)
+                                FileUtils.copyFile(inputFile,destFile)
                             }
                         }
                     }

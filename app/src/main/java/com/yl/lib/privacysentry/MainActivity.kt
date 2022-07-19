@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import com.yl.lib.privacy_test.PrivacyProxySelfTest2
@@ -197,7 +198,11 @@ class MainActivity : AppCompatActivity() {
             requestPermissions(permissions, 1000)
         }
 
-        AlertDialog.Builder(this).setMessage("确认隐私协议").setPositiveButton(
+        AlertDialog.Builder(this).setMessage("确认隐私协议").setNegativeButton(
+            "不同意"
+        ) { dialog, which ->
+            Log.d("RUNRUN", "xxx")
+        }.setPositiveButton(
             "确定"
         ) { dialog, which ->
             PrivacySentry.Privacy.updatePrivacyShow()
