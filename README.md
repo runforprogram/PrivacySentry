@@ -3,6 +3,14 @@
     例如游客模式，这种通过xposed\epic只能做检测，毕竟xposed\epic不能带到线上，但是asm可以
     
 ## 更新日志
+    2022-08-30(1.1.0)
+        1. 变量hook支持通过注解配置
+        2. 修复不引入privacy-proxy引起的问题
+    2022-07-29(1.0.9)
+        1. 删除多余的aar引用
+    2022-07-26(1.0.8)
+        1. 优化log输出，未初始化也能有log输出
+        2. 优化初始化方式
     2022-06-24(1.0.7)
         1. 新增hook 传感器方法
         2. 新增静态扫描，支持产出敏感函数hook列表
@@ -33,7 +41,7 @@
 ## TODO
 1. 有其他问题欢迎提issue
 2. 项目里如果有引入高德地图or openInstall，先加黑 blackList = ["com.loc","com.amap.api","io.openinstall.sdk"], asm的版本有冲突
-3. 动态加载的代码拦截不到的
+3. 动态加载加载的代码无法拦截(热修复，插件化)
 
 ## 如何使用
 
@@ -49,7 +57,7 @@
 	buildscript {
 	     dependencies {
 	         // 添加插件依赖
-	         classpath 'com.github.allenymt.PrivacySentry:plugin-sentry:1.0.7'
+	         classpath 'com.github.allenymt.PrivacySentry:plugin-sentry:1.0.9'
 	     }
 	}
 ```
@@ -63,7 +71,7 @@
         
         dependencies {
             // aar依赖
-            def privacyVersion = "1.0.7"
+            def privacyVersion = "1.0.9"
             implementation "com.github.allenymt.PrivacySentry:hook-sentry:$privacyVersion"
             implementation "com.github.allenymt.PrivacySentry:privacy-annotation:$privacyVersion"
 	    //如果不想使用库中本身的代理方法，可以不引入这个aar，自己实现
@@ -185,7 +193,7 @@ open class PrivacyProxyResolver {
 
 
 ## 隐私方法调用结果产出
--     默认拦截隐私方法时间为1分钟，支持自定义设置时间。
+-     支持hook调用堆栈至文件，默认的时间为1分钟，支持自定义设置时间。
 -     排查结果可参考目录下的demo_result.xls，排查结果支持两个维度查看，第一是结合隐私协议的展示时机和敏感方法的调用时机，第二是统计所有敏感函数的调用次数
 -     排查结果可观察日志，结果文件会在 /storage/emulated/0/Android/data/yourPackgeName/cache/xx.xls，需要手动执行下adb pull
 
