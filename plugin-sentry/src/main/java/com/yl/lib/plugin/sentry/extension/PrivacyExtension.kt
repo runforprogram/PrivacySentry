@@ -11,4 +11,7 @@ open class PrivacyExtension {
     // 记录所有被替换的方法名+类名,将以单行的形式被写入到文件中
     // 空=不写入
     var replaceFileName :String? =null
+
+    // debug是否应用此插件
+    var isDebugEnable = false
 }

@@ -1,10 +1,12 @@
 package com.yl.lib.plugin.sentry.transform
 
 import com.android.build.api.transform.*
+import com.android.build.api.variant.VariantInfo
 import com.android.build.gradle.internal.pipeline.TransformManager
 import com.yl.lib.plugin.sentry.extension.PrivacyExtension
+import com.yl.lib.plugin.sentry.isApply
 import org.apache.commons.io.FileUtils
-import org.gradle.api.Project
+import org.gradle.api.logging.Logger
 import org.gradle.util.GFileUtils
 import java.io.File
 
@@ -14,15 +16,21 @@ import java.io.File
  */
 class PrivacySentryTransform : Transform {
 
-    private var project: Project
-
-    constructor(project: Project) {
-        this.project = project
+    private var logger: Logger
+    private var extension : PrivacyExtension
+    private var resultFilePath:String
+    constructor(logger: Logger,extension: PrivacyExtension,path:String) {
+        this.logger =logger
+        this.extension=extension
+        this.resultFilePath=path
     }
-
 
     override fun getName(): String {
         return "PrivacySentryPlugin"
+    }
+
+    override fun applyToVariant(variant: VariantInfo?): Boolean {
+        return variant.isApply()
     }
 
     override fun getInputTypes(): MutableSet<QualifiedContent.ContentType> {
@@ -39,84 +47,76 @@ class PrivacySentryTransform : Transform {
 
     override fun transform(transformInvocation: TransformInvocation?) {
         super.transform(transformInvocation)
-        println("8888888888888888888888888")
         // 非增量，删掉所有
         if (transformInvocation?.isIncremental == false) {
             transformInvocation.outputProvider.deleteAll()
         }
-
-        var privacyExtension = project.extensions.findByType(
-            PrivacyExtension::class.java
-        ) as PrivacyExtension
-
         transformInvocation?.inputs?.forEach {
             handleJar(
                 it,
                 transformInvocation.outputProvider,
                 transformInvocation.isIncremental,
-                privacyExtension
+                extension
             )
             handleDirectory(
                 it,
                 transformInvocation.outputProvider,
-                transformInvocation.isIncremental, privacyExtension
+                transformInvocation.isIncremental,
+                extension
             )
         }
         // 写入被替换所有的类和文件
-        privacyExtension.replaceFileName?.let {
-            ReplaceMethodManger.MANAGER.flushToFile(privacyExtension.replaceFileName!!,project)
+        extension.replaceFileName?.let {
+            ReplaceMethodManger.MANAGER.flushToFile(resultFilePath,extension.replaceFileName!!, logger)
         }
     }
 
     // 处理jar
     private fun handleJar(
-        transformInput: TransformInput, outputProvider: TransformOutputProvider,
+        transformInput: TransformInput,
+        outputProvider: TransformOutputProvider,
         incremental: Boolean,
         extension: PrivacyExtension
     ) {
-        println("hook handleJar=")
+        logger.info("hook handleJar=")
         transformInput.jarInputs.forEach {
             var output =
                 outputProvider.getContentLocation(it.name, it.contentTypes, it.scopes, Format.JAR)
-            println("hook output it name="+it.name)
-            println("hook output="+output.absolutePath)
-            println("hook input="+it.file.absolutePath)
-            if (it.name.contains("mqttv3")) {
+            logger.info("hook output it name=" + it.name)
+            logger.info("hook output=" + output.absolutePath)
+            logger.info("hook input=" + it.file.absolutePath)
+            if (it.name.contains("mqttv3")&&false) {
                 GFileUtils.copyFile(it.file, output)
-            }else{
+            } else {
                 if (incremental) {
                     when (it.status) {
                         Status.ADDED, Status.CHANGED -> {
-                            project.logger.info("directory status is ${it.status}  file is:" + it.file.absolutePath)
-                            PrivacyClassProcessor.processJar(
-                                project,
+                            logger.info("directory status is ${it.status}  file is:" + it.file.absolutePath)
+                            PrivacyClassProcessor.processJar(logger,
                                 it.file,
                                 extension,
                                 runAsm = { input, project ->
                                     PrivacyClassProcessor.runHook(
-                                        input,
-                                        project
+                                        input, project
                                     )
                                 })
                             GFileUtils.deleteQuietly(output)
                             GFileUtils.copyFile(it.file, output)
                         }
                         Status.REMOVED -> {
-                            project.logger.info("jar REMOVED file is:" + it.file.absolutePath)
+                            logger.info("jar REMOVED file is:" + it.file.absolutePath)
                             GFileUtils.deleteQuietly(output)
                         }
                     }
                 } else {
-                    project.logger.info("jar incremental false file is:" + it.file.absolutePath)
-                    println("jar incremental false file is:" + it.file.absolutePath)
-                    PrivacyClassProcessor.processJar(
-                        project,
+                    logger.info("jar incremental false file is:" + it.file.absolutePath)
+                    logger.info("jar incremental false file is:" + it.file.absolutePath)
+                    PrivacyClassProcessor.processJar(logger,
                         it.file,
                         extension,
                         runAsm = { input, project ->
                             PrivacyClassProcessor.runHook(
-                                input,
-                                project
+                                input, project
                             )
                         })
                     GFileUtils.deleteQuietly(output)
@@ -136,55 +136,47 @@ class PrivacySentryTransform : Transform {
         transformInput.directoryInputs.forEach {
             var inputDir = it.file
             var outputDir = outputProvider.getContentLocation(
-                it.name,
-                it.contentTypes,
-                it.scopes,
-                Format.DIRECTORY
+                it.name, it.contentTypes, it.scopes, Format.DIRECTORY
             )
             if (incremental) {
                 for ((inputFile, status) in it.changedFiles) {
-                    val destFileChild= inputFile.toRelativeString(it.file)
-                    val destFile=File(outputDir,destFileChild)
+                    val destFileChild = inputFile.toRelativeString(it.file)
+                    val destFile = File(outputDir, destFileChild)
 
                     when (status) {
                         Status.REMOVED -> {
-                            project.logger.info("directory REMOVED file is:" + inputFile.absolutePath)
+                            logger.info("directory REMOVED file is:" + inputFile.absolutePath)
                             GFileUtils.deleteQuietly(inputFile)
                         }
                         Status.ADDED, Status.CHANGED -> {
-                            project.logger.info("directory status is $status $ file is:" + inputFile.absolutePath)
-                            PrivacyClassProcessor.processDirectory(
-                                project,
+                            logger.info("directory status is $status $ file is:" + inputFile.absolutePath)
+                            PrivacyClassProcessor.processDirectory(logger,
                                 inputDir,
                                 inputFile,
                                 extension,
-                                runAsm = { input, project ->
+                                runAsm = { input, extension ->
                                     PrivacyClassProcessor.runHook(
-                                        input,
-                                        project
+                                        input, extension
                                     )
-                                }
-                            )
+                                })
                             if (inputFile.exists()) {
                                 GFileUtils.deleteQuietly(destFile)
-                                FileUtils.copyFile(inputFile,destFile)
+                                FileUtils.copyFile(inputFile, destFile)
                             }
                         }
                     }
                 }
             } else {
-                project.logger.info("directory incremental false  file is:" + inputDir.absolutePath)
+                logger.info("directory incremental false  file is:" + inputDir.absolutePath)
                 inputDir.walk().forEach { file ->
                     if (!file.isDirectory) {
-                        PrivacyClassProcessor.processDirectory(
-                            project,
+                        PrivacyClassProcessor.processDirectory(logger,
                             inputDir,
                             file,
                             extension,
-                            runAsm = { input, project ->
+                            runAsm = { input, extension ->
                                 PrivacyClassProcessor.runHook(
-                                    input,
-                                    project
+                                    input, extension
                                 )
                             })
                     }
