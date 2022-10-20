@@ -32,7 +32,7 @@ android {
         }
         release {
             debuggable true
-            jniDebuggable false
+            jniDebuggable=false
             shrinkResources false
             minifyEnabled true
             signingConfig signingConfigs.release //使用release签

@@ -86,6 +86,7 @@ class PrivacyClassProcessor {
             var enumeration = jarFile.entries()
             while (enumeration.hasMoreElements()) {
                 var jarEntry = enumeration.nextElement()
+                //加密的jar
                 if (jarEntry.name.startsWith("META-INF/") && jarEntry.name.substringAfterLast('.') in JAR_SIGNATURE_EXTENSIONS){
                     continue
                 }

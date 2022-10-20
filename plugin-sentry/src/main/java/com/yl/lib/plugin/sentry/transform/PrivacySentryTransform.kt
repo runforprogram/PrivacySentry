@@ -3,8 +3,8 @@ package com.yl.lib.plugin.sentry.transform
 import com.android.build.api.transform.*
 import com.android.build.api.variant.VariantInfo
 import com.android.build.gradle.internal.pipeline.TransformManager
+import com.yl.lib.plugin.sentry.Utils
 import com.yl.lib.plugin.sentry.extension.PrivacyExtension
-import com.yl.lib.plugin.sentry.isApply
 import org.apache.commons.io.FileUtils
 import org.gradle.api.logging.Logger
 import org.gradle.util.GFileUtils
@@ -30,7 +30,7 @@ class PrivacySentryTransform : Transform {
     }
 
     override fun applyToVariant(variant: VariantInfo?): Boolean {
-        return variant.isApply()
+        return Utils.isApply(variant,extension)
     }
 
     override fun getInputTypes(): MutableSet<QualifiedContent.ContentType> {

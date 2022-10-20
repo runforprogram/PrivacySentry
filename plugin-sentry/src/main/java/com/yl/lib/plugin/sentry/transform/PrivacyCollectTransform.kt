@@ -2,18 +2,14 @@ package com.yl.lib.plugin.sentry.transform
 
 import com.android.build.api.transform.*
 import com.android.build.api.variant.VariantInfo
-import com.android.build.gradle.AppExtension
 import com.android.build.gradle.internal.pipeline.TransformManager
+import com.yl.lib.plugin.sentry.Utils
 import com.yl.lib.plugin.sentry.extension.PrivacyExtension
-import com.yl.lib.plugin.sentry.isApply
 import com.yl.lib.plugin.sentry.runCommand
 import org.apache.commons.io.FileUtils
-import org.gradle.api.Project
 import org.gradle.api.logging.Logger
-import org.gradle.internal.impldep.software.amazon.ion.impl.PrivateIonConstants.True
 import org.gradle.util.GFileUtils
 import java.io.File
-import kotlin.math.log
 
 /**
  * @author yulun
@@ -46,7 +42,7 @@ class PrivacyCollectTransform : Transform {
     }
 
     override fun applyToVariant(variant: VariantInfo?): Boolean {
-        return variant.isApply()
+        return Utils.isApply(variant,extension)
     }
     override fun transform(transformInvocation: TransformInvocation?) {
         super.transform(transformInvocation)
