@@ -17,12 +17,13 @@ import java.io.File
  * 收集带有 com.yl.lib.privacy_annotation.PrivacyMethodProxy 的方法
  */
 class PrivacyCollectTransform : Transform {
-    private var logger:Logger 
+    private var logger: Logger
 
-    private var extension : PrivacyExtension
-    constructor(logger: Logger,extension: PrivacyExtension) {
-        this.logger =logger
-        this.extension=extension
+    private var extension: PrivacyExtension
+
+    constructor(logger: Logger, extension: PrivacyExtension) {
+        this.logger = logger
+        this.extension = extension
     }
 
     override fun getName(): String {
@@ -42,8 +43,9 @@ class PrivacyCollectTransform : Transform {
     }
 
     override fun applyToVariant(variant: VariantInfo?): Boolean {
-        return Utils.isApply(variant,extension)
+        return Utils.isApply(variant, extension)
     }
+
     override fun transform(transformInvocation: TransformInvocation?) {
         super.transform(transformInvocation)
 
@@ -51,18 +53,18 @@ class PrivacyCollectTransform : Transform {
         if (transformInvocation?.isIncremental == false) {
             transformInvocation.outputProvider.deleteAll()
         }
-  
+
         transformInvocation?.inputs?.forEach {
             handleJar(
                 it,
                 transformInvocation.outputProvider,
                 transformInvocation.isIncremental,
-                extension 
+                extension
             )
             handleDirectory(
                 it,
                 transformInvocation.outputProvider,
-                transformInvocation.isIncremental,extension 
+                transformInvocation.isIncremental, extension
             )
         }
     }
@@ -75,11 +77,11 @@ class PrivacyCollectTransform : Transform {
         extension: PrivacyExtension
     ) {
         transformInput.jarInputs.forEach {
-            println("outputreal it name ="+it.name)
+            logger.info("outputreal it name =" + it.name)
             var output =
                 if (it.name.endsWith("jar")) {
                     outputProvider.getContentLocation(
-                        "pc-"+it.name,
+                        "pc-" + it.name,
                         it.contentTypes,
                         it.scopes,
                         Format.JAR
@@ -92,64 +94,48 @@ class PrivacyCollectTransform : Transform {
                         Format.JAR
                     )
                 }
-            println("outputreal ="+output.absolutePath)
-            var destFile=File(output.parent,it.file.name)
-            destFile=output
-            println("output ="+destFile.absolutePath)
-            val command= ("jarsigner -verify " +it.file.absolutePath)
-            println("command=$command")
-            val signCheck=command.runCommand(it.file)
-            if (signCheck == null) {
-                println("$command run error******************")
-                return
-            }
-            println("sign check =  $signCheck")
-            val signed=signCheck.contains("已验证")
-            val nameSkip=it.name.contains("mqttv3")
-            if (signed) {
-                GFileUtils.copyFile(it.file, output)
-            }else{
-                if (incremental) {
-                    when (it.status) {
-                        Status.ADDED, Status.CHANGED -> {
-                            logger.info("directory status is ${it.status}  file is:" + it.file.absolutePath)
-                            PrivacyClassProcessor.processJar(
-                                logger,
-                                it.file,
-                                extension,
-                                runAsm = { input, PrivacyExtension ->
-                                    PrivacyClassProcessor.runCollect(
-                                        input,
-                                        extension
-                                    )
-                                })
-                            GFileUtils.deleteQuietly(destFile)
-                            GFileUtils.copyFile(it.file, destFile)
-                        }
-                        Status.REMOVED -> {
-                            logger.info("jar REMOVED file is:" + it.file.absolutePath)
-                            GFileUtils.deleteQuietly(destFile)
-                        }
+            logger.info("outputreal =" + output.absolutePath)
+            var destFile = output
+            if (incremental) {
+                when (it.status) {
+                    Status.ADDED, Status.CHANGED -> {
+                        logger.info("directory status is ${it.status}  file is:" + it.file.absolutePath)
+                        PrivacyClassProcessor.processJar(
+                            logger,
+                            it.file,
+                            extension,
+                            runAsm = { input, PrivacyExtension ->
+                                PrivacyClassProcessor.runCollect(
+                                    input,
+                                    extension
+                                )
+                            })
+                        GFileUtils.deleteQuietly(destFile)
+                        GFileUtils.copyFile(it.file, destFile)
                     }
-                } else {
-                    logger.info("jar incremental false file is:" + it.file.absolutePath)
-                    if (it.file.absolutePath.contains("mqttv3")) {
-
+                    Status.REMOVED -> {
+                        logger.info("jar REMOVED file is:" + it.file.absolutePath)
+                        GFileUtils.deleteQuietly(destFile)
                     }
-                    PrivacyClassProcessor.processJar(
-                        logger,
-                        it.file,
-                        extension,
-                        runAsm = { input, project ->
-                            PrivacyClassProcessor.runCollect(
-                                input,
-                                project
-                            )
-                        })
-                    println("destfiel="+destFile.absolutePath)
-                    GFileUtils.deleteQuietly(destFile)
-                    GFileUtils.copyFile(it.file, destFile)
                 }
+            } else {
+                logger.info("jar incremental false file is:" + it.file.absolutePath)
+                if (it.file.absolutePath.contains("mqttv3")) {
+
+                }
+                PrivacyClassProcessor.processJar(
+                    logger,
+                    it.file,
+                    extension,
+                    runAsm = { input, project ->
+                        PrivacyClassProcessor.runCollect(
+                            input,
+                            project
+                        )
+                    })
+                logger.info("destfiel=" + destFile.absolutePath)
+                GFileUtils.deleteQuietly(destFile)
+                GFileUtils.copyFile(it.file, destFile)
             }
         }
     }
@@ -162,8 +148,8 @@ class PrivacyCollectTransform : Transform {
         extension: PrivacyExtension
     ) {
         transformInput.directoryInputs.forEach {
-            var inputDir = it.file
-            var outputDir = outputProvider.getContentLocation(
+            val inputDir = it.file
+            val outputDir = outputProvider.getContentLocation(
                 it.name,
                 it.contentTypes,
                 it.scopes,
@@ -171,8 +157,8 @@ class PrivacyCollectTransform : Transform {
             )
             if (incremental) {
                 for ((inputFile, status) in it.changedFiles) {
-                    val destFileChild= inputFile.toRelativeString(it.file)
-                    val destFile=File(outputDir,destFileChild)
+                    val destFileChild = inputFile.toRelativeString(it.file)
+                    val destFile = File(outputDir, destFileChild)
                     when (status) {
                         Status.REMOVED -> {
                             logger.info("directory REMOVED file is:" + inputFile.absolutePath)
@@ -194,9 +180,10 @@ class PrivacyCollectTransform : Transform {
                             )
                             if (inputFile.exists()) {
                                 GFileUtils.deleteQuietly(destFile)
-                                FileUtils.copyFile(inputFile,destFile)
+                                FileUtils.copyFile(inputFile, destFile)
                             }
                         }
+                        else -> {}
                     }
                 }
             } else {
