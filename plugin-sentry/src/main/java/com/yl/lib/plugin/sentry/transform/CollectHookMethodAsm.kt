@@ -2,14 +2,9 @@ package com.yl.lib.plugin.sentry.transform
 
 import com.yl.lib.plugin.sentry.extension.PrivacyExtension
 import com.yl.lib.privacy_annotation.MethodInvokeOpcode
-import org.gradle.api.Project
 import org.gradle.api.logging.Logger
-import org.objectweb.asm.AnnotationVisitor
-import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.FieldVisitor
-import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.*
 import org.objectweb.asm.commons.AdviceAdapter
-import kotlin.math.log
 
 /**
  * @author yulun
@@ -98,7 +93,6 @@ class CollectHookMethodClassAdapter : ClassVisitor {
         }
         return super.visitField(access, name, descriptor, signature, value)
     }
-}
 
 /**
  * 解析PrivacyClassReplace注解
@@ -210,6 +204,7 @@ class CollectMethodHookAnnotationVisitor : AnnotationVisitor {
 
     override fun visit(name: String?, value: Any?) {
         super.visit(name, value)
+        println("runrunname=$name,value=$value")
         if (name.equals("originalClass")) {
             var classSourceName = value.toString()
             hookMethodItem?.originClassName =
@@ -220,7 +215,39 @@ class CollectMethodHookAnnotationVisitor : AnnotationVisitor {
             hookMethodItem?.ignoreClass = value as Boolean
         } else if (name.equals("originalOpcode")) {
             hookMethodItem?.originMethodAccess = value as Int
+        }else if (name.equals("includePackageNames")){
+            hookMethodItem?.includePackageNames?.add((value as String).replace(".","/"))
+        }else if (name.equals("excludePackageNames")){
+            println("excludePackageNames=$value")
+            hookMethodItem?.excludePackageNames?.add((value as String).replace(".","/"))
         }
+    }
+
+    override fun visitArray(name: String?): AnnotationVisitor {
+        println("visitArray name = $name")
+        if (name.equals("includePackageNames")){
+//        val av = super.visitArray(name)
+        return object : AnnotationVisitor(
+            Opcodes.ASM7,
+            null
+        ) {
+            override fun visit(name: String?, value: Any?) {
+                println("visitArrayvisit name = $name,value =$value")
+                hookMethodItem?.includePackageNames?.add((value as String))
+            }
+           }
+        }else if (name.equals("excludePackageNames")){
+            return object : AnnotationVisitor(
+                Opcodes.ASM7,
+                null
+            ) {
+                override fun visit(name: String?, value: Any?) {
+                    println("visitArrayvisit name = $name,value =$value")
+                    hookMethodItem?.excludePackageNames?.add((value as String))
+                }
+            }
+        }
+        return av
     }
 
     override fun visitEnum(name: String?, descriptor: String?, value: String?) {
@@ -319,4 +346,5 @@ class CollectFieldHookAnnotationVisitor : AnnotationVisitor {
             HookFieldManager.MANAGER.appendHookField(it)
         }
     }
+ }
 }

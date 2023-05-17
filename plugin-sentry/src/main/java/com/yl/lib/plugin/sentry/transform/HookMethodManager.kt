@@ -26,7 +26,7 @@ open class HookMethodManager {
                 return false
             }
             return hookMethodList.find {
-                isHookMethodItem(it, methodName, classOwnerName, methodReturnDesc,opcodeAndSource)
+                isHookMethodItem("",it, methodName, classOwnerName, methodReturnDesc,opcodeAndSource)
             } != null
         }
 
@@ -44,6 +44,7 @@ open class HookMethodManager {
          * @return HookMethodItem?
          */
         fun findHookItemByName(
+            invokeClassString:String,
             methodName: String, classOwnerName: String = "",
             methodReturnDesc: String = "",
             opcodeAndSource:Int
@@ -51,9 +52,8 @@ open class HookMethodManager {
             if (methodName == "") {
                 return null
             }
-
             return hookMethodList.find {
-                isHookMethodItem(it, methodName, classOwnerName, methodReturnDesc,opcodeAndSource)
+                isHookMethodItem(invokeClassString,it, methodName, classOwnerName, methodReturnDesc,opcodeAndSource)
             }
         }
 
@@ -66,6 +66,7 @@ open class HookMethodManager {
          * @return Boolean
          */
         private fun isHookMethodItem(
+            invokeClassString: String,
             hookItem: HookMethodItem, methodName: String,
             classOwnerName: String = "",
             methodReturnDesc: String = "",
@@ -74,15 +75,13 @@ open class HookMethodManager {
             if (methodName.isEmpty()) {
                 return false
             }
-
             // 如果忽略类名，只要方法名和签名相同就可以
             val replaceClassOwnerName = if (hookItem.ignoreClass) {
                 ""
             } else {
                 classOwnerName
             }
-
-            return if (replaceClassOwnerName.isEmpty() && methodReturnDesc.isNotEmpty()) {
+            val methodNameOK= if (replaceClassOwnerName.isEmpty() && methodReturnDesc.isNotEmpty()) {
                 methodName == hookItem.originMethodName && methodReturnDesc == hookItem.originMethodDesc && opcodeAndSource == hookItem.originMethodAccess
             } else if (replaceClassOwnerName.isNotEmpty() && methodReturnDesc.isEmpty()) {
                 methodName == hookItem.originMethodName && replaceClassOwnerName == hookItem.originClassName && opcodeAndSource == hookItem.originMethodAccess
@@ -90,6 +89,23 @@ open class HookMethodManager {
                 methodName == hookItem.originMethodName && replaceClassOwnerName == hookItem.originClassName && methodReturnDesc == hookItem.originMethodDesc && opcodeAndSource == hookItem.originMethodAccess
             } else {
                 methodName == hookItem.originMethodName
+            }
+            return if (methodNameOK.not()){
+                methodNameOK
+            }else{
+                //当方法签名相同的时候，判断类名的排除规则
+                //todo 如果写了两个代理方法，这里应该返回谁（如果都满足条件include和exclude）//现在返回first找到的
+                // 如果一个满足条件，另外一个不满足条件，应该返回吗？//现在返回了
+                println("invokeClassString=$invokeClassString")
+                val exclude = hookItem.excludePackageNames.firstOrNull {packageName->
+                    println("packageName=$packageName")
+                    invokeClassString.contains(packageName)
+                }!=null
+                val include = hookItem.includePackageNames.isEmpty()
+                        ||hookItem.includePackageNames.firstOrNull {packageName->
+                    invokeClassString.contains(packageName)
+                }!=null
+                exclude.not()&&include
             }
         }
 
@@ -158,6 +174,10 @@ class HookMethodItem {
     // 原始方法签名
     var originMethodDesc: String? = ""
 
+    var includePackageNames:MutableList<String> = mutableListOf()
+
+    var excludePackageNames:MutableList<String> = mutableListOf()
+
     var originMethodAccess: Int? = 0
 
     var ignoreClass : Boolean = false
@@ -170,6 +190,7 @@ class HookMethodItem {
 
     // 代理的方法签名
     var proxyMethodDesc: String
+
 
     constructor(
         proxyClassName: String,
@@ -205,13 +226,15 @@ class HookMethodItem {
             return (other.originMethodAccess == originMethodAccess &&
                     other.originClassName == originClassName &&
                     other.originMethodName == originMethodName &&
-                    other.originMethodDesc == originMethodDesc)
+                    other.originMethodDesc == originMethodDesc &&
+                    other.includePackageNames == includePackageNames&&
+                    other.excludePackageNames == excludePackageNames)
         }
 
         return super.equals(other)
     }
 
     override fun hashCode(): Int {
-        return originMethodAccess.hashCode() + originClassName.hashCode() + originMethodName.hashCode() + originMethodDesc.hashCode()
+        return originMethodAccess.hashCode() + originClassName.hashCode() + originMethodName.hashCode() + originMethodDesc.hashCode()+includePackageNames.hashCode()+excludePackageNames.hashCode()
     }
 }

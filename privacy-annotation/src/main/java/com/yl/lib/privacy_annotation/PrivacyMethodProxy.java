@@ -24,4 +24,8 @@ public @interface PrivacyMethodProxy {
 
     // 忽略originalClass参数，在校验方法替换时只校验方法名和方法描述信息
     boolean ignoreClass() default false;
+    // 替换的包名,为空时表示所有包
+    String[] includePackageNames() default {};
+    // 排除替换的包名
+    String[] excludePackageNames() default {};
 }
